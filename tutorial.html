@@ -1121,17 +1121,31 @@
 </footer>
 
 <script>
-  // Detect app mode
+  function detectLang() {
+    const url = new URLSearchParams(window.location.search).get('lang');
+    if (url) return url;
+    for (const l of (navigator.languages || [navigator.language || ''])) {
+      const c = l.toLowerCase();
+      if (c.startsWith('zh')) return 'zh';
+      if (c.startsWith('ja')) return 'ja';
+      if (c.startsWith('ko')) return 'ko';
+      if (c.startsWith('th')) return 'th';
+      if (c.startsWith('en')) return 'en';
+    }
+    return 'en';
+  }
+
   const params = new URLSearchParams(window.location.search);
   if (params.get('mode') === 'app') {
     document.body.classList.add('app-mode');
-    // Set header text based on lang param
-    const lang = params.get('lang') || 'zh';
+    const lang = detectLang();
     const titles = { zh:'使用教學', en:'User Guide', ja:'使い方ガイド', ko:'사용 가이드', th:'คู่มือการใช้งาน' };
     const subs   = { zh:'DriveHUD 操作說明', en:'DriveHUD Complete Tutorial', ja:'DriveHUD 操作説明', ko:'DriveHUD 완전 사용 설명서', th:'คำแนะนำการใช้ DriveHUD' };
-    document.getElementById('app-title').textContent = titles[lang] || titles.zh;
-    document.getElementById('app-sub').textContent   = subs[lang]   || subs.zh;
+    document.getElementById('app-title').textContent = titles[lang] || titles.en;
+    document.getElementById('app-sub').textContent   = subs[lang]   || subs.en;
     setLang(lang, null);
+  } else {
+    setLang(detectLang(), null);
   }
 
   function setLang(lang, btn) {
