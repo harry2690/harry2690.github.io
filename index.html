@@ -3,257 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DriveHUD Navigator — 抬頭顯示導航</title>
-  <meta name="description" content="DriveHUD 是專為駕駛設計的抬頭顯示導航 App。將手機放在儀表板，透過擋風玻璃反射，導航資訊清晰呈現在視線前方，雙眼不離路面。">
-  <meta property="og:title" content="DriveHUD Navigator — 抬頭顯示導航">
-  <meta property="og:description" content="把手機變成車載 HUD。支援 Google 與 Apple 雙導航來源，免費下載。">
-  <meta property="og:image" content="https://harry2690.github.io/assets/og.png">
+  <title>DriveHUD Navigator</title>
+  <meta name="description" content="DriveHUD — HUD navigation app for iPhone. Mirror your screen onto the windshield for eyes-on-road navigation.">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --green: #00ff41;
-      --blue: #0a84ff;
-      --bg: #000;
-      --surface: #111;
-      --surface2: #1c1c1e;
-      --text: #f5f5f7;
-      --muted: #86868b;
-      --border: #2c2c2e;
+      --green: #00ff41; --blue: #0a84ff;
+      --bg: #000; --surface: #111; --surface2: #1c1c1e;
+      --text: #f5f5f7; --muted: #86868b; --border: #2c2c2e;
     }
     html { scroll-behavior: smooth; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
 
     /* NAV */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      background: rgba(0,0,0,.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(255,255,255,.06);
-      padding: 0 32px;
-      height: 52px;
-      display: flex; align-items: center; justify-content: space-between;
+      height: 52px; padding: 0 28px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
     }
-    .nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--text); }
-    .nav-logo svg { width: 26px; height: 26px; fill: var(--blue); flex-shrink: 0; }
-    .nav-logo span { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
-    .nav-links { display: flex; gap: 28px; align-items: center; }
-    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .15s; }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex-shrink: 0; }
+    .nav-logo svg { width: 24px; height: 24px; fill: var(--blue); }
+    .nav-logo span { font-size: 16px; font-weight: 700; }
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .15s; }
     .nav-links a:hover { color: var(--text); }
-    .nav-dl {
-      background: var(--blue); color: #fff;
-      padding: 6px 16px; border-radius: 20px;
-      font-size: 13px; font-weight: 600;
-      text-decoration: none; transition: opacity .15s;
-    }
-    .nav-dl:hover { opacity: .85; color: #fff; }
+    .nav-dl { background: var(--blue); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: opacity .15s; }
+    .nav-dl:hover { opacity: .85; }
+
+    /* LANG BAR */
+    .lang-bar { background: #0a0a0a; border-bottom: 1px solid var(--border); padding: 8px 28px; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 52px; }
+    .lang-bar button { background: transparent; border: 1px solid #3a3a3a; color: var(--muted); padding: 4px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all .15s; font-family: inherit; }
+    .lang-bar button.active, .lang-bar button:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* LANG SECTIONS */
+    .lang-section { display: none; }
+    .lang-section.active { display: block; }
 
     /* HERO */
-    .hero {
-      padding: 140px 24px 60px;
-      text-align: center;
-      position: relative; overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-      width: 900px; height: 500px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(10,132,255,.18) 0%, transparent 65%);
-      pointer-events: none;
-    }
-    .hero-tag {
-      display: inline-block;
-      border: 1px solid rgba(10,132,255,.4);
-      color: var(--blue);
-      padding: 4px 14px; border-radius: 20px;
-      font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-      margin-bottom: 24px;
-    }
-    .hero h1 {
-      font-size: clamp(44px, 8vw, 82px);
-      font-weight: 800; letter-spacing: -.04em; line-height: 1.05;
-      margin-bottom: 24px;
-    }
-    .hero h1 em {
-      font-style: normal;
-      background: linear-gradient(135deg, var(--green) 0%, #00c830 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero-desc {
-      font-size: clamp(17px, 2.5vw, 21px);
-      color: var(--muted); max-width: 580px; margin: 0 auto 40px;
-      line-height: 1.65;
-    }
+    .hero { padding: 80px 24px 56px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 800px; height: 400px; background: radial-gradient(ellipse at 50% 0%, rgba(10,132,255,.16) 0%, transparent 65%); pointer-events: none; }
+    .hero-tag { display: inline-block; border: 1px solid rgba(10,132,255,.4); color: var(--blue); padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 20px; }
+    .hero h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 800; letter-spacing: -.04em; line-height: 1.05; margin-bottom: 20px; }
+    .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--green), #00c830); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-desc { font-size: clamp(16px, 2.2vw, 20px); color: var(--muted); max-width: 560px; margin: 0 auto 36px; line-height: 1.65; }
     .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn-appstore {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--text); color: #000;
-      padding: 13px 24px; border-radius: 14px;
-      font-size: 15px; font-weight: 700; text-decoration: none;
-      transition: all .2s;
-    }
-    .btn-appstore:hover { opacity: .88; transform: translateY(-2px); }
-    .btn-appstore svg { width: 22px; height: 22px; flex-shrink: 0; }
-    .btn-ghost {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: transparent; color: var(--text);
-      padding: 13px 24px; border-radius: 14px;
-      font-size: 15px; font-weight: 600; text-decoration: none;
-      border: 1px solid var(--border);
-      transition: all .2s;
-    }
-    .btn-ghost:hover { background: var(--surface2); transform: translateY(-2px); }
+    .btn-dl { display: inline-flex; align-items: center; gap: 8px; background: var(--text); color: #000; padding: 12px 22px; border-radius: 14px; font-size: 15px; font-weight: 700; text-decoration: none; transition: all .2s; }
+    .btn-dl:hover { opacity: .88; transform: translateY(-2px); }
+    .btn-dl svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .btn-more { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--text); padding: 12px 22px; border-radius: 14px; font-size: 15px; font-weight: 600; text-decoration: none; border: 1px solid var(--border); transition: all .2s; }
+    .btn-more:hover { background: var(--surface2); transform: translateY(-2px); }
 
-    /* SCREENSHOT STRIP */
-    .screen-strip {
-      padding: 60px 24px 80px;
-      display: flex; justify-content: center; align-items: flex-end;
-      gap: 20px; flex-wrap: wrap;
-    }
-    .phone-frame {
-      background: #1a1a1a;
-      border-radius: 40px;
-      overflow: hidden;
-      border: 1px solid #2a2a2a;
-      box-shadow: 0 40px 80px rgba(0,0,0,.7);
-      transition: transform .3s ease;
-      flex-shrink: 0;
-    }
-    .phone-frame:hover { transform: translateY(-10px); }
-    .phone-frame.portrait { width: 220px; }
-    .phone-frame.landscape {
-      width: 440px; border-radius: 30px;
-      box-shadow: 0 0 0 1px rgba(0,255,65,.1), 0 40px 80px rgba(0,0,0,.7), 0 0 60px rgba(0,255,65,.06);
-    }
-    .phone-frame img { width: 100%; display: block; }
+    /* SCREENSHOTS */
+    .screens { padding: 48px 24px 72px; display: flex; justify-content: center; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .phone { background: #1a1a1a; border-radius: 36px; overflow: hidden; border: 1px solid #2a2a2a; box-shadow: 0 32px 64px rgba(0,0,0,.7); transition: transform .3s; flex-shrink: 0; }
+    .phone:hover { transform: translateY(-8px); }
+    .phone.p { width: 200px; }
+    .phone.l { width: 400px; border-radius: 24px; box-shadow: 0 0 0 1px rgba(0,255,65,.1), 0 32px 64px rgba(0,0,0,.7), 0 0 50px rgba(0,255,65,.05); }
+    .phone img { width: 100%; display: block; }
 
-    /* DIVIDER */
-    hr { border: none; border-top: 1px solid var(--border); margin: 0 40px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 0 32px; }
 
-    /* SECTIONS */
-    .section { padding: 100px 24px; max-width: 1080px; margin: 0 auto; }
-    .section-tag {
-      font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
-      color: var(--blue); margin-bottom: 12px;
-    }
-    .section-title {
-      font-size: clamp(28px, 4.5vw, 48px);
-      font-weight: 700; letter-spacing: -.025em;
-      margin-bottom: 48px; line-height: 1.15;
-    }
+    /* SECTION */
+    .sec { padding: 88px 24px; max-width: 1060px; margin: 0 auto; }
+    .sec-tag { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+    .sec-title { font-size: clamp(26px, 4vw, 44px); font-weight: 700; letter-spacing: -.025em; margin-bottom: 44px; line-height: 1.15; }
 
-    /* HOW IT WORKS */
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
+    /* STEPS */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 28px; }
     .step { text-align: center; }
-    .step-num {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: var(--surface2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; font-weight: 700; color: var(--blue);
-      margin: 0 auto 16px;
-    }
-    .step h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-    .step p { font-size: 14px; color: var(--muted); }
+    .step-n { width: 44px; height: 44px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: var(--blue); margin: 0 auto 14px; }
+    .step h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .step p { font-size: 13px; color: var(--muted); }
 
-    /* FEATURES GRID */
-    .feat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 2px;
-      background: var(--border);
-      border-radius: 20px; overflow: hidden;
-      border: 1px solid var(--border);
-    }
-    .feat {
-      background: var(--surface);
-      padding: 32px 28px;
-      transition: background .2s;
-    }
+    /* FEATURES */
+    .feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2px; background: var(--border); border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
+    .feat { background: var(--surface); padding: 28px 24px; transition: background .15s; }
     .feat:hover { background: var(--surface2); }
-    .feat-icon { font-size: 28px; margin-bottom: 14px; }
-    .feat h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-    .feat p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+    .feat-ic { font-size: 26px; margin-bottom: 12px; }
+    .feat h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .feat p { font-size: 13px; color: var(--muted); line-height: 1.55; }
 
     /* MODES */
-    .modes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 680px) { .modes-grid { grid-template-columns: 1fr; } }
-    .mode-card {
-      border-radius: 20px; overflow: hidden;
-      padding: 36px 32px 32px; position: relative;
-    }
-    .mode-hud {
-      background: #030c04;
-      border: 1px solid rgba(0,255,65,.15);
-    }
-    .mode-normal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-    }
-    .mode-label {
-      display: inline-block; padding: 3px 11px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-    .mode-hud .mode-label { background: rgba(0,255,65,.12); color: var(--green); }
-    .mode-normal .mode-label { background: rgba(10,132,255,.12); color: var(--blue); }
-    .mode-card h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 660px) { .modes { grid-template-columns: 1fr; } }
+    .mode { border-radius: 18px; overflow: hidden; padding: 32px 28px 28px; }
+    .mode-hud { background: #030d04; border: 1px solid rgba(0,255,65,.15); }
+    .mode-normal { background: var(--surface); border: 1px solid var(--border); }
+    .mode-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+    .mode-hud .mode-badge { background: rgba(0,255,65,.12); color: var(--green); }
+    .mode-normal .mode-badge { background: rgba(10,132,255,.12); color: var(--blue); }
+    .mode h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
     .mode-hud h3 { color: var(--green); }
-    .mode-card p { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.55; }
-    .mode-img { border-radius: 12px; overflow: hidden; }
+    .mode p { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.55; }
+    .mode-img { border-radius: 10px; overflow: hidden; }
     .mode-img img { width: 100%; display: block; }
 
     /* AD NOTE */
-    .ad-note {
-      max-width: 680px; margin: 0 auto;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 28px 32px;
-      display: flex; gap: 16px; align-items: flex-start;
-    }
-    .ad-note-icon { font-size: 28px; flex-shrink: 0; }
-    .ad-note h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-    .ad-note p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+    .ad-note { max-width: 660px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px 28px; display: flex; gap: 14px; align-items: flex-start; }
+    .ad-note-ic { font-size: 26px; flex-shrink: 0; }
+    .ad-note h3 { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+    .ad-note p { font-size: 13px; color: var(--muted); line-height: 1.55; }
 
     /* CTA */
-    .cta-section {
-      padding: 100px 24px 120px;
-      text-align: center;
-    }
-    .cta-section h2 {
-      font-size: clamp(32px, 5vw, 56px);
-      font-weight: 800; letter-spacing: -.03em;
-      margin-bottom: 16px;
-    }
-    .cta-section p { font-size: 18px; color: var(--muted); margin-bottom: 40px; }
-    .cta-free {
-      display: inline-block;
-      font-size: 13px; color: var(--muted);
-      margin-top: 16px;
-    }
+    .cta { padding: 88px 24px 110px; text-align: center; }
+    .cta h2 { font-size: clamp(30px, 5vw, 52px); font-weight: 800; letter-spacing: -.03em; margin-bottom: 14px; }
+    .cta p { font-size: 17px; color: var(--muted); margin-bottom: 36px; }
+    .cta-sub { display: block; font-size: 13px; color: var(--muted); margin-top: 14px; }
 
     /* FOOTER */
-    .footer {
-      border-top: 1px solid var(--border);
-      padding: 36px 40px;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 12px;
-    }
-    .footer p { font-size: 13px; color: var(--muted); }
-    .footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
-    .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color .15s; }
+    .footer { border-top: 1px solid var(--border); padding: 32px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .footer p { font-size: 12px; color: var(--muted); }
+    .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
+    .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; transition: color .15s; }
     .footer-links a:hover { color: var(--text); }
 
-    @media (max-width: 620px) {
+    @media (max-width: 600px) {
       nav { padding: 0 16px; }
       .nav-links { display: none; }
-      .phone-frame.portrait { width: 42vw; }
-      .phone-frame.landscape { width: 90vw; }
-      .footer { flex-direction: column; align-items: flex-start; padding: 28px 20px; }
+      .phone.p { width: 40vw; }
+      .phone.l { width: 88vw; }
+      .footer { flex-direction: column; padding: 24px 20px; }
     }
   </style>
 </head>
@@ -265,187 +137,367 @@
     <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
     <span>DriveHUD</span>
   </a>
-  <div class="nav-links">
-    <a href="#how">使用方式</a>
-    <a href="#features">功能</a>
-    <a href="#modes">顯示模式</a>
-    <a href="privacy.html">隱私權</a>
-    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="nav-dl" target="_blank">免費下載</a>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="privacy.html" data-i18n="nav-privacy">隱私權政策</a>
+      <a href="mailto:harry2690@gmail.com" data-i18n="nav-contact">聯絡我們</a>
+    </div>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="nav-dl" target="_blank" data-i18n="nav-dl">免費下載</a>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-tag">iOS 導航 App</div>
-  <h1>雙眼不離路面<br><em>把手機變成 HUD</em></h1>
-  <p class="hero-desc">
-    DriveHUD 是專為駕駛設計的抬頭顯示導航應用程式。將手機放在儀表板，透過擋風玻璃反射，導航資訊清晰呈現在你的視線前方，讓你雙眼不離路面，行車更安全。
-  </p>
-  <div class="hero-cta">
-    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-appstore" target="_blank">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-      在 App Store 下載
-    </a>
-    <a href="#how" class="btn-ghost">了解更多 ↓</a>
-  </div>
-</section>
-
-<!-- SCREENSHOTS -->
-<div class="screen-strip">
-  <div class="phone-frame portrait">
-    <img src="assets/screen-login.png" alt="DriveHUD 登入畫面">
-  </div>
-  <div class="phone-frame landscape">
-    <img src="assets/screen-hud.png" alt="DriveHUD HUD 鏡像模式">
-  </div>
-  <div class="phone-frame portrait">
-    <img src="assets/screen-home.png" alt="DriveHUD 主畫面">
-  </div>
+<!-- LANG BAR -->
+<div class="lang-bar">
+  <button class="active" onclick="setLang('zh',this)">繁體中文</button>
+  <button onclick="setLang('en',this)">English</button>
+  <button onclick="setLang('ja',this)">日本語</button>
+  <button onclick="setLang('ko',this)">한국어</button>
+  <button onclick="setLang('th',this)">ภาษาไทย</button>
 </div>
 
-<hr>
-
-<!-- HOW IT WORKS -->
-<div class="section" id="how">
-  <p class="section-tag">使用方式</p>
-  <h2 class="section-title">四步驟開始導航</h2>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <h3>輸入目的地</h3>
-      <p>直接輸入地址或地點名稱，或從 Google Maps、Apple Maps 分享目的地</p>
+<!-- ═══════════════ 繁體中文 ═══════════════ -->
+<div class="lang-section active" id="lang-zh">
+  <section class="hero">
+    <div class="hero-tag">iOS 導航 App</div>
+    <h1>雙眼不離路面<br><em>把手機變成 HUD</em></h1>
+    <p class="hero-desc">DriveHUD 是專為駕駛設計的抬頭顯示導航應用程式。將手機放在儀表板，透過擋風玻璃反射，導航資訊清晰呈現在你的視線前方，讓你雙眼不離路面，行車更安全。</p>
+    <div class="hero-cta">
+      <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>在 App Store 下載</a>
+      <a href="#zh-how" class="btn-more">了解更多 ↓</a>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <h3>選擇導航來源</h3>
-      <p>選擇 Google 地圖路線服務或 Apple 地圖，依需求自由切換</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <h3>放置手機</h3>
-      <p>將手機固定於儀表板或出風口，螢幕朝向擋風玻璃</p>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <h3>切換 HUD 模式</h3>
-      <p>啟用 HUD 模式，導航資訊立即鏡像翻轉，對準擋風玻璃反射即可使用</p>
+  </section>
+  <div class="screens">
+    <div class="phone p"><img src="assets/screen-login.png" alt="登入畫面"></div>
+    <div class="phone l"><img src="assets/screen-hud.png" alt="HUD 模式"></div>
+    <div class="phone p"><img src="assets/screen-home.png" alt="主畫面"></div>
+  </div>
+  <hr>
+  <div class="sec" id="zh-how">
+    <p class="sec-tag">使用方式</p>
+    <h2 class="sec-title">四步驟開始導航</h2>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>輸入目的地</h3><p>直接輸入地址或地點名稱，或從 Google Maps、Apple Maps 分享目的地</p></div>
+      <div class="step"><div class="step-n">2</div><h3>選擇導航來源</h3><p>選擇 Google 地圖路線服務或 Apple 地圖，依需求自由切換</p></div>
+      <div class="step"><div class="step-n">3</div><h3>放置手機</h3><p>將手機固定於儀表板，螢幕朝向擋風玻璃方向</p></div>
+      <div class="step"><div class="step-n">4</div><h3>切換 HUD 模式</h3><p>啟用 HUD 模式，畫面鏡像翻轉，對準擋風玻璃反射即可使用</p></div>
     </div>
   </div>
-</div>
-
-<hr>
-
-<!-- FEATURES -->
-<div class="section" id="features">
-  <p class="section-tag">主要功能</p>
-  <h2 class="section-title">為開車而生的每一個細節</h2>
-  <div class="feat-grid">
-    <div class="feat">
-      <div class="feat-icon">🔆</div>
-      <h3>抬頭顯示模式</h3>
-      <p>鏡像翻轉畫面，配合擋風玻璃反射顯示導航資訊，視線不必離開路面。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🗺</div>
-      <h3>雙導航引擎</h3>
-      <p>支援 Google 地圖路線服務與 Apple 地圖，一個 App 兩種選擇。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">↩️</div>
-      <h3>即時轉彎指引</h3>
-      <p>清晰顯示下一個路口的方向與距離，以及接下來的路況預告。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">⚡</div>
-      <h3>車速顯示</h3>
-      <p>即時顯示目前行車速度，讓你隨時掌握車速，輔助安全行駛。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔗</div>
-      <h3>分享匯入目的地</h3>
-      <p>從 Google Maps 或 Apple Maps 分享目的地，自動跳回並開始導航，無需重新輸入。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🔄</div>
-      <h3>自動重新規劃</h3>
-      <p>偏離路線時自動重新計算最佳路徑，確保你永遠走在正確的方向上。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">🌐</div>
-      <h3>多語言支援</h3>
-      <p>支援繁體中文、English、日本語、한국어、ภาษาไทย，自動偵測系統語言。</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">📍</div>
-      <h3>目的地搜尋</h3>
-      <p>輸入地址或地點名稱快速搜尋，顯示距離排序讓你輕鬆選擇正確地點。</p>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">主要功能</p>
+    <h2 class="sec-title">為開車而生的每一個細節</h2>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🔆</div><h3>抬頭顯示模式</h3><p>鏡像翻轉畫面，配合擋風玻璃反射顯示導航資訊，視線不必離開路面。</p></div>
+      <div class="feat"><div class="feat-ic">🗺</div><h3>雙導航引擎</h3><p>支援 Google 地圖路線服務與 Apple 地圖，一個 App 兩種選擇。</p></div>
+      <div class="feat"><div class="feat-ic">↩️</div><h3>即時轉彎指引</h3><p>清晰顯示下一個路口的方向與距離，以及接下來的路況預告。</p></div>
+      <div class="feat"><div class="feat-ic">⚡</div><h3>車速顯示</h3><p>即時顯示目前行車速度，輔助安全行駛。</p></div>
+      <div class="feat"><div class="feat-ic">🔗</div><h3>分享匯入目的地</h3><p>從 Google Maps 或 Apple Maps 分享目的地，自動跳回並開始導航，無需重新輸入。</p></div>
+      <div class="feat"><div class="feat-ic">🔄</div><h3>自動重新規劃</h3><p>偏離路線時自動重新計算最佳路徑，確保你永遠走在正確方向。</p></div>
+      <div class="feat"><div class="feat-ic">🌐</div><h3>多語言支援</h3><p>支援繁體中文、English、日本語、한국어、ภาษาไทย，自動偵測系統語言。</p></div>
+      <div class="feat"><div class="feat-ic">📍</div><h3>目的地搜尋</h3><p>輸入地址或地點名稱快速搜尋，距離排序讓你輕鬆選擇正確地點。</p></div>
     </div>
   </div>
-</div>
-
-<hr>
-
-<!-- MODES -->
-<div class="section" id="modes">
-  <p class="section-tag">兩種顯示模式</p>
-  <h2 class="section-title">隨情境切換，隨時都好用</h2>
-  <div class="modes-grid">
-    <div class="mode-card mode-hud">
-      <span class="mode-label">HUD 模式</span>
-      <h3>抬頭顯示</h3>
-      <p>水平鏡像翻轉，讓導航資訊透過擋風玻璃反射到你的視線前方。綠色螢光配色在黑暗中格外清晰，適合夜間或晨間行駛。</p>
-      <div class="mode-img">
-        <img src="assets/screen-hud.png" alt="HUD 鏡像模式">
-      </div>
-    </div>
-    <div class="mode-card mode-normal">
-      <span class="mode-label">一般模式</span>
-      <h3>標準顯示</h3>
-      <p>跟隨系統深色/淺色外觀，介面清晰直覺。適合直接看螢幕使用，或給副駕駛乘客確認路線。</p>
-      <div class="mode-img">
-        <img src="assets/screen-normal.png" alt="一般顯示模式">
-      </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">兩種顯示模式</p>
+    <h2 class="sec-title">隨情境切換，隨時都好用</h2>
+    <div class="modes">
+      <div class="mode mode-hud"><span class="mode-badge">HUD 模式</span><h3>抬頭顯示</h3><p>水平鏡像翻轉，導航資訊透過擋風玻璃反射到視線前方。綠色螢光配色在黑暗中格外清晰。</p><div class="mode-img"><img src="assets/screen-hud.png" alt="HUD 模式"></div></div>
+      <div class="mode mode-normal"><span class="mode-badge">一般模式</span><h3>標準顯示</h3><p>跟隨系統深色/淺色外觀，介面清晰直覺。適合直接看螢幕或讓副駕駛確認路線。</p><div class="mode-img"><img src="assets/screen-normal.png" alt="一般模式"></div></div>
     </div>
   </div>
+  <hr>
+  <div class="sec" style="padding-top:56px;padding-bottom:56px;">
+    <div class="ad-note"><div class="ad-note-ic">📢</div><div><h3>關於廣告</h3><p>DriveHUD 免費提供，部分用戶版本包含廣告。廣告收入用於支持應用程式持續開發與維護，讓更多功能得以免費提供給所有用戶。</p></div></div>
+  </div>
+  <hr>
+  <section class="cta">
+    <p class="sec-tag" style="margin-bottom:14px;">立即體驗</p>
+    <h2>開始你的第一次<br>HUD 導航</h2>
+    <p>Apple Maps 導航無需帳號即可免費使用</p>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank" style="display:inline-flex;"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>在 App Store 下載</a>
+    <span class="cta-sub">免費 · iPhone · iOS 17+</span>
+  </section>
 </div>
 
-<hr>
-
-<!-- AD NOTE -->
-<div class="section" style="padding-top: 60px; padding-bottom: 60px;">
-  <div class="ad-note">
-    <div class="ad-note-icon">📢</div>
-    <div>
-      <h3>關於廣告</h3>
-      <p>DriveHUD 免費提供，部分用戶版本包含廣告。廣告收入用於支持應用程式持續開發與維護，讓更多功能得以免費提供給所有用戶。</p>
+<!-- ═══════════════ English ═══════════════ -->
+<div class="lang-section" id="lang-en">
+  <section class="hero">
+    <div class="hero-tag">iOS Navigation App</div>
+    <h1>Eyes on the road.<br><em>Turn your phone into a HUD.</em></h1>
+    <p class="hero-desc">DriveHUD is a heads-up display navigation app designed for drivers. Place your phone on the dashboard — navigation info reflects off your windshield and right into your line of sight, so you never have to look away from the road.</p>
+    <div class="hero-cta">
+      <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>Download on App Store</a>
+      <a href="#en-how" class="btn-more">Learn more ↓</a>
+    </div>
+  </section>
+  <div class="screens">
+    <div class="phone p"><img src="assets/screen-login.png" alt="Login"></div>
+    <div class="phone l"><img src="assets/screen-hud.png" alt="HUD mode"></div>
+    <div class="phone p"><img src="assets/screen-home.png" alt="Home"></div>
+  </div>
+  <hr>
+  <div class="sec" id="en-how">
+    <p class="sec-tag">How it works</p>
+    <h2 class="sec-title">Four steps to start navigating</h2>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>Enter destination</h3><p>Type an address or place name, or share a destination from Google Maps or Apple Maps</p></div>
+      <div class="step"><div class="step-n">2</div><h3>Choose navigation source</h3><p>Select Google Maps Routes or Apple Maps — switch freely anytime</p></div>
+      <div class="step"><div class="step-n">3</div><h3>Mount your phone</h3><p>Place your phone on the dashboard with the screen facing the windshield</p></div>
+      <div class="step"><div class="step-n">4</div><h3>Enable HUD mode</h3><p>Tap HUD mode — the display mirrors horizontally and reflects onto your windshield</p></div>
     </div>
   </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">Features</p>
+    <h2 class="sec-title">Built for every detail of driving</h2>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🔆</div><h3>HUD Display Mode</h3><p>Mirrors the screen horizontally so navigation reflects off your windshield into your line of sight.</p></div>
+      <div class="feat"><div class="feat-ic">🗺</div><h3>Dual Navigation Engines</h3><p>Google Maps Routes API and Apple Maps — two providers, one app.</p></div>
+      <div class="feat"><div class="feat-ic">↩️</div><h3>Real-time Turn Guidance</h3><p>Clear display of the next maneuver, distance, and an upcoming step preview.</p></div>
+      <div class="feat"><div class="feat-ic">⚡</div><h3>Speed Display</h3><p>Live GPS speed readout to help you stay aware of your current speed.</p></div>
+      <div class="feat"><div class="feat-ic">🔗</div><h3>Share & Import Destination</h3><p>Share a place from Google Maps or Apple Maps — DriveHUD launches automatically with the destination filled in.</p></div>
+      <div class="feat"><div class="feat-ic">🔄</div><h3>Auto Rerouting</h3><p>When you go off-route, DriveHUD recalculates the best path automatically.</p></div>
+      <div class="feat"><div class="feat-ic">🌐</div><h3>Multilingual</h3><p>Supports Traditional Chinese, English, 日本語, 한국어, and ภาษาไทย — auto-detects system language.</p></div>
+      <div class="feat"><div class="feat-ic">📍</div><h3>Destination Search</h3><p>Search by address or place name with distance-sorted results for easy selection.</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">Two display modes</p>
+    <h2 class="sec-title">Switch to match any situation</h2>
+    <div class="modes">
+      <div class="mode mode-hud"><span class="mode-badge">HUD Mode</span><h3>Heads-Up Display</h3><p>Horizontally mirrored for windshield reflection. Neon green on black — clearly visible at night and in low light.</p><div class="mode-img"><img src="assets/screen-hud.png" alt="HUD mode"></div></div>
+      <div class="mode mode-normal"><span class="mode-badge">Normal Mode</span><h3>Standard Display</h3><p>Follows your system light/dark appearance. Clean and intuitive — great for direct viewing or a passenger checking the route.</p><div class="mode-img"><img src="assets/screen-normal.png" alt="Normal mode"></div></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec" style="padding-top:56px;padding-bottom:56px;">
+    <div class="ad-note"><div class="ad-note-ic">📢</div><div><h3>About Ads</h3><p>DriveHUD is free to use. Some users see ads — ad revenue supports ongoing development and keeps core features free for everyone.</p></div></div>
+  </div>
+  <hr>
+  <section class="cta">
+    <p class="sec-tag" style="margin-bottom:14px;">Get started</p>
+    <h2>Start your first<br>HUD navigation</h2>
+    <p>Apple Maps navigation is free — no account required</p>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank" style="display:inline-flex;"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>Download on App Store</a>
+    <span class="cta-sub">Free · iPhone · iOS 17+</span>
+  </section>
 </div>
 
-<hr>
+<!-- ═══════════════ 日本語 ═══════════════ -->
+<div class="lang-section" id="lang-ja">
+  <section class="hero">
+    <div class="hero-tag">iOS ナビゲーションアプリ</div>
+    <h1>前方から目を離さず<br><em>スマホをHUDに変える</em></h1>
+    <p class="hero-desc">DriveHUD はドライバーのために設計されたヘッドアップディスプレイナビゲーションアプリです。スマホをダッシュボードに置くだけで、ナビ情報がフロントガラスに反射し、視線を外さずに運転できます。</p>
+    <div class="hero-cta">
+      <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>App Store でダウンロード</a>
+      <a href="#ja-how" class="btn-more">詳しく見る ↓</a>
+    </div>
+  </section>
+  <div class="screens">
+    <div class="phone p"><img src="assets/screen-login.png" alt="ログイン画面"></div>
+    <div class="phone l"><img src="assets/screen-hud.png" alt="HUDモード"></div>
+    <div class="phone p"><img src="assets/screen-home.png" alt="ホーム画面"></div>
+  </div>
+  <hr>
+  <div class="sec" id="ja-how">
+    <p class="sec-tag">使い方</p>
+    <h2 class="sec-title">4ステップでナビ開始</h2>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>目的地を入力</h3><p>住所や場所名を入力するか、Google マップ・Apple マップから目的地をシェア</p></div>
+      <div class="step"><div class="step-n">2</div><h3>ナビソースを選択</h3><p>Google マップルート or Apple マップ — いつでも切り替え可能</p></div>
+      <div class="step"><div class="step-n">3</div><h3>スマホを設置</h3><p>ダッシュボードにスマホを固定し、画面をフロントガラスに向ける</p></div>
+      <div class="step"><div class="step-n">4</div><h3>HUDモードに切替</h3><p>HUDモードをオンにすると画面が左右反転され、フロントガラスに反射して表示</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">主な機能</p>
+    <h2 class="sec-title">ドライブのすべての瞬間のために</h2>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🔆</div><h3>HUDディスプレイモード</h3><p>画面を左右反転し、フロントガラスへの反射でナビ情報を視線前方に表示。</p></div>
+      <div class="feat"><div class="feat-ic">🗺</div><h3>デュアルナビエンジン</h3><p>Google マップルートサービスと Apple マップの両方に対応。1つのアプリで2つの選択肢。</p></div>
+      <div class="feat"><div class="feat-ic">↩️</div><h3>リアルタイム案内</h3><p>次の交差点の方向・距離、および次のステップのプレビューを明確に表示。</p></div>
+      <div class="feat"><div class="feat-ic">⚡</div><h3>速度表示</h3><p>現在の走行速度をリアルタイム表示し、安全運転をサポート。</p></div>
+      <div class="feat"><div class="feat-ic">🔗</div><h3>目的地シェア＆インポート</h3><p>Google マップや Apple マップからシェアするだけで、自動的にDriveHUDが起動し目的地をセット。</p></div>
+      <div class="feat"><div class="feat-ic">🔄</div><h3>自動ルート再計算</h3><p>ルートを外れた際に最適なルートを自動再計算。迷わず目的地へ。</p></div>
+      <div class="feat"><div class="feat-ic">🌐</div><h3>多言語対応</h3><p>繁体字中国語・英語・日本語・韓国語・タイ語に対応。システム言語を自動検出。</p></div>
+      <div class="feat"><div class="feat-ic">📍</div><h3>目的地検索</h3><p>住所や場所名で検索、距離順のリストで簡単に正しい場所を選択。</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">2つの表示モード</p>
+    <h2 class="sec-title">シーンに合わせて切り替え</h2>
+    <div class="modes">
+      <div class="mode mode-hud"><span class="mode-badge">HUD モード</span><h3>ヘッドアップ表示</h3><p>水平反転でフロントガラスに投影。暗闇でもはっきり見えるネオングリーン配色で、夜間ドライブに最適。</p><div class="mode-img"><img src="assets/screen-hud.png" alt="HUDモード"></div></div>
+      <div class="mode mode-normal"><span class="mode-badge">通常モード</span><h3>スタンダード表示</h3><p>システムのダーク/ライトモードに対応。直接画面を見る場合や、助手席からルート確認する際に便利。</p><div class="mode-img"><img src="assets/screen-normal.png" alt="通常モード"></div></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec" style="padding-top:56px;padding-bottom:56px;">
+    <div class="ad-note"><div class="ad-note-ic">📢</div><div><h3>広告について</h3><p>DriveHUD は無料でご利用いただけます。一部のユーザー向けバージョンには広告が含まれます。広告収益はアプリの継続的な開発・維持に使われ、すべてのユーザーに機能を無料で提供し続けるために役立てられます。</p></div></div>
+  </div>
+  <hr>
+  <section class="cta">
+    <p class="sec-tag" style="margin-bottom:14px;">今すぐ始める</p>
+    <h2>はじめての<br>HUDナビゲーション</h2>
+    <p>Apple マップナビはアカウント不要で無料利用可能</p>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank" style="display:inline-flex;"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>App Store でダウンロード</a>
+    <span class="cta-sub">無料 · iPhone · iOS 17+</span>
+  </section>
+</div>
 
-<!-- CTA -->
-<section class="cta-section">
-  <p class="section-tag" style="margin-bottom: 16px;">立即體驗</p>
-  <h2>開始你的第一次<br>HUD 導航</h2>
-  <p>Apple Maps 導航無需帳號即可免費使用</p>
-  <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-appstore" target="_blank" style="display: inline-flex;">
-    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-    在 App Store 下載
-  </a>
-  <br>
-  <span class="cta-free">免費 · iPhone · iOS 17+</span>
-</section>
+<!-- ═══════════════ 한국어 ═══════════════ -->
+<div class="lang-section" id="lang-ko">
+  <section class="hero">
+    <div class="hero-tag">iOS 내비게이션 앱</div>
+    <h1>시선은 도로 위로.<br><em>스마트폰을 HUD로.</em></h1>
+    <p class="hero-desc">DriveHUD는 운전자를 위해 설계된 헤드업 디스플레이 내비게이션 앱입니다. 스마트폰을 대시보드에 올려놓으면 내비게이션 정보가 앞유리에 반사되어 시선을 도로에서 떼지 않아도 됩니다.</p>
+    <div class="hero-cta">
+      <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>App Store에서 다운로드</a>
+      <a href="#ko-how" class="btn-more">자세히 보기 ↓</a>
+    </div>
+  </section>
+  <div class="screens">
+    <div class="phone p"><img src="assets/screen-login.png" alt="로그인 화면"></div>
+    <div class="phone l"><img src="assets/screen-hud.png" alt="HUD 모드"></div>
+    <div class="phone p"><img src="assets/screen-home.png" alt="홈 화면"></div>
+  </div>
+  <hr>
+  <div class="sec" id="ko-how">
+    <p class="sec-tag">사용 방법</p>
+    <h2 class="sec-title">4단계로 내비게이션 시작</h2>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>목적지 입력</h3><p>주소나 장소명을 입력하거나 Google 지도·Apple 지도에서 목적지 공유</p></div>
+      <div class="step"><div class="step-n">2</div><h3>내비게이션 소스 선택</h3><p>Google 지도 경로 서비스 또는 Apple 지도 — 언제든지 자유롭게 전환 가능</p></div>
+      <div class="step"><div class="step-n">3</div><h3>스마트폰 거치</h3><p>대시보드에 스마트폰을 고정하고 화면을 앞유리 방향으로 배치</p></div>
+      <div class="step"><div class="step-n">4</div><h3>HUD 모드 전환</h3><p>HUD 모드를 켜면 화면이 좌우 반전되어 앞유리에 반사되어 표시</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">주요 기능</p>
+    <h2 class="sec-title">운전의 모든 순간을 위해</h2>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🔆</div><h3>HUD 디스플레이 모드</h3><p>화면을 좌우 반전하여 앞유리 반사로 내비게이션 정보를 시선 앞에 표시.</p></div>
+      <div class="feat"><div class="feat-ic">🗺</div><h3>듀얼 내비게이션 엔진</h3><p>Google 지도 경로 서비스와 Apple 지도를 모두 지원. 하나의 앱에서 두 가지 선택.</p></div>
+      <div class="feat"><div class="feat-ic">↩️</div><h3>실시간 회전 안내</h3><p>다음 교차로의 방향과 거리, 그 다음 경로 미리보기를 명확하게 표시.</p></div>
+      <div class="feat"><div class="feat-ic">⚡</div><h3>속도 표시</h3><p>현재 주행 속도를 실시간으로 표시하여 안전 운전을 지원.</p></div>
+      <div class="feat"><div class="feat-ic">🔗</div><h3>목적지 공유 & 가져오기</h3><p>Google 지도나 Apple 지도에서 장소를 공유하면 DriveHUD가 자동으로 실행되고 목적지가 설정.</p></div>
+      <div class="feat"><div class="feat-ic">🔄</div><h3>자동 경로 재탐색</h3><p>경로를 벗어났을 때 최적 경로를 자동으로 재계산.</p></div>
+      <div class="feat"><div class="feat-ic">🌐</div><h3>다국어 지원</h3><p>繁體中文·English·日本語·한국어·ภาษาไทย 지원, 시스템 언어 자동 감지.</p></div>
+      <div class="feat"><div class="feat-ic">📍</div><h3>목적지 검색</h3><p>주소나 장소명으로 검색, 거리순 정렬로 올바른 장소를 쉽게 선택.</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">두 가지 디스플레이 모드</p>
+    <h2 class="sec-title">상황에 맞게 전환하세요</h2>
+    <div class="modes">
+      <div class="mode mode-hud"><span class="mode-badge">HUD 모드</span><h3>헤드업 디스플레이</h3><p>좌우 반전으로 앞유리에 투영. 야간에도 선명하게 보이는 네온 그린 배색.</p><div class="mode-img"><img src="assets/screen-hud.png" alt="HUD 모드"></div></div>
+      <div class="mode mode-normal"><span class="mode-badge">일반 모드</span><h3>표준 디스플레이</h3><p>시스템 다크/라이트 모드에 따라 변경. 직접 화면을 보거나 동승자가 경로를 확인할 때 편리.</p><div class="mode-img"><img src="assets/screen-normal.png" alt="일반 모드"></div></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec" style="padding-top:56px;padding-bottom:56px;">
+    <div class="ad-note"><div class="ad-note-ic">📢</div><div><h3>광고 안내</h3><p>DriveHUD는 무료로 제공됩니다. 일부 사용자 버전에는 광고가 포함됩니다. 광고 수익은 앱의 지속적인 개발과 유지를 지원하며, 모든 사용자에게 무료로 기능을 제공하는 데 사용됩니다.</p></div></div>
+  </div>
+  <hr>
+  <section class="cta">
+    <p class="sec-tag" style="margin-bottom:14px;">지금 시작하기</p>
+    <h2>첫 번째 HUD 내비게이션을<br>시작하세요</h2>
+    <p>Apple 지도 내비게이션은 계정 없이 무료 사용 가능</p>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank" style="display:inline-flex;"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>App Store에서 다운로드</a>
+    <span class="cta-sub">무료 · iPhone · iOS 17+</span>
+  </section>
+</div>
 
-<!-- FOOTER -->
+<!-- ═══════════════ ภาษาไทย ═══════════════ -->
+<div class="lang-section" id="lang-th">
+  <section class="hero">
+    <div class="hero-tag">แอปนำทาง iOS</div>
+    <h1>สายตาอยู่บนถนน<br><em>เปลี่ยนสมาร์ทโฟนเป็น HUD</em></h1>
+    <p class="hero-desc">DriveHUD คือแอปนำทางแบบ Head-Up Display ที่ออกแบบมาสำหรับผู้ขับขี่ วางสมาร์ทโฟนบนแดชบอร์ด ข้อมูลนำทางจะสะท้อนบนกระจกหน้ารถ ให้สายตาของคุณอยู่บนถนนตลอดเวลา</p>
+    <div class="hero-cta">
+      <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>ดาวน์โหลดบน App Store</a>
+      <a href="#th-how" class="btn-more">ดูเพิ่มเติม ↓</a>
+    </div>
+  </section>
+  <div class="screens">
+    <div class="phone p"><img src="assets/screen-login.png" alt="หน้าเข้าสู่ระบบ"></div>
+    <div class="phone l"><img src="assets/screen-hud.png" alt="โหมด HUD"></div>
+    <div class="phone p"><img src="assets/screen-home.png" alt="หน้าหลัก"></div>
+  </div>
+  <hr>
+  <div class="sec" id="th-how">
+    <p class="sec-tag">วิธีใช้งาน</p>
+    <h2 class="sec-title">4 ขั้นตอนเริ่มนำทาง</h2>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>ใส่ปลายทาง</h3><p>พิมพ์ที่อยู่หรือชื่อสถานที่ หรือแชร์ปลายทางจาก Google Maps หรือ Apple Maps</p></div>
+      <div class="step"><div class="step-n">2</div><h3>เลือกแหล่งนำทาง</h3><p>Google Maps Routes หรือ Apple Maps — สลับได้อิสระตลอดเวลา</p></div>
+      <div class="step"><div class="step-n">3</div><h3>วางสมาร์ทโฟน</h3><p>ติดสมาร์ทโฟนบนแดชบอร์ด โดยให้หน้าจอหันไปทางกระจกหน้ารถ</p></div>
+      <div class="step"><div class="step-n">4</div><h3>เปิดโหมด HUD</h3><p>เปิดโหมด HUD หน้าจอจะพลิกซ้าย-ขวา และสะท้อนบนกระจกหน้ารถ</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">ฟีเจอร์หลัก</p>
+    <h2 class="sec-title">ออกแบบมาเพื่อทุกช่วงเวลาของการขับรถ</h2>
+    <div class="feats">
+      <div class="feat"><div class="feat-ic">🔆</div><h3>โหมด HUD Display</h3><p>พลิกหน้าจอแนวนอนเพื่อสะท้อนข้อมูลนำทางบนกระจกหน้ารถ ไม่ต้องละสายตาจากถนน</p></div>
+      <div class="feat"><div class="feat-ic">🗺</div><h3>เครื่องยนต์นำทางคู่</h3><p>รองรับทั้ง Google Maps Routes API และ Apple Maps — สองตัวเลือก แอปเดียว</p></div>
+      <div class="feat"><div class="feat-ic">↩️</div><h3>คำแนะนำเลี้ยวแบบเรียลไทม์</h3><p>แสดงทิศทางและระยะทางของจุดเลี้ยวถัดไปอย่างชัดเจน พร้อมตัวอย่างเส้นทางต่อไป</p></div>
+      <div class="feat"><div class="feat-ic">⚡</div><h3>แสดงความเร็ว</h3><p>แสดงความเร็วปัจจุบันแบบเรียลไทม์ ช่วยให้ขับรถได้อย่างปลอดภัย</p></div>
+      <div class="feat"><div class="feat-ic">🔗</div><h3>แชร์ & นำเข้าปลายทาง</h3><p>แชร์สถานที่จาก Google Maps หรือ Apple Maps — DriveHUD เปิดอัตโนมัติพร้อมปลายทาง</p></div>
+      <div class="feat"><div class="feat-ic">🔄</div><h3>คำนวณเส้นทางใหม่อัตโนมัติ</h3><p>เมื่อออกนอกเส้นทาง ระบบจะคำนวณเส้นทางที่ดีที่สุดใหม่โดยอัตโนมัติ</p></div>
+      <div class="feat"><div class="feat-ic">🌐</div><h3>รองรับหลายภาษา</h3><p>繁體中文·English·日本語·한국어·ภาษาไทย ตรวจจับภาษาระบบอัตโนมัติ</p></div>
+      <div class="feat"><div class="feat-ic">📍</div><h3>ค้นหาปลายทาง</h3><p>ค้นหาด้วยที่อยู่หรือชื่อสถานที่ เรียงตามระยะทางเพื่อเลือกสถานที่ที่ถูกต้องได้ง่าย</p></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec">
+    <p class="sec-tag">สองโหมดการแสดงผล</p>
+    <h2 class="sec-title">สลับตามสถานการณ์</h2>
+    <div class="modes">
+      <div class="mode mode-hud"><span class="mode-badge">โหมด HUD</span><h3>Head-Up Display</h3><p>พลิกหน้าจอแนวนอนเพื่อฉายบนกระจกหน้า สีเขียวนีออนบนพื้นดำ มองเห็นชัดในความมืด</p><div class="mode-img"><img src="assets/screen-hud.png" alt="โหมด HUD"></div></div>
+      <div class="mode mode-normal"><span class="mode-badge">โหมดปกติ</span><h3>การแสดงผลมาตรฐาน</h3><p>ตามโหมดมืด/สว่างของระบบ อินเทอร์เฟซชัดเจน เหมาะสำหรับดูหน้าจอโดยตรง</p><div class="mode-img"><img src="assets/screen-normal.png" alt="โหมดปกติ"></div></div>
+    </div>
+  </div>
+  <hr>
+  <div class="sec" style="padding-top:56px;padding-bottom:56px;">
+    <div class="ad-note"><div class="ad-note-ic">📢</div><div><h3>เกี่ยวกับโฆษณา</h3><p>DriveHUD ให้บริการฟรี บางเวอร์ชันมีโฆษณา รายได้จากโฆษณาใช้สนับสนุนการพัฒนาและบำรุงรักษาแอปอย่างต่อเนื่อง เพื่อให้ฟีเจอร์หลักยังคงฟรีสำหรับทุกคน</p></div></div>
+  </div>
+  <hr>
+  <section class="cta">
+    <p class="sec-tag" style="margin-bottom:14px;">เริ่มต้นเลย</p>
+    <h2>เริ่มการนำทาง HUD<br>ครั้งแรกของคุณ</h2>
+    <p>นำทางด้วย Apple Maps ใช้ฟรี ไม่ต้องสร้างบัญชี</p>
+    <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" class="btn-dl" target="_blank" style="display:inline-flex;"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>ดาวน์โหลดบน App Store</a>
+    <span class="cta-sub">ฟรี · iPhone · iOS 17+</span>
+  </section>
+</div>
+
+<!-- FOOTER (shared) -->
 <footer class="footer">
   <p>© 2026 DriveHUD. All rights reserved.</p>
   <div class="footer-links">
-    <a href="privacy.html">隱私權政策</a>
-    <a href="mailto:harry2690@gmail.com">聯絡我們</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="mailto:harry2690@gmail.com">Contact</a>
     <a href="https://apps.apple.com/us/app/drivehud-navigator/id6775841792" target="_blank">App Store</a>
   </div>
 </footer>
 
+<script>
+  function setLang(lang, btn) {
+    document.querySelectorAll('.lang-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.lang-bar button').forEach(el => el.classList.remove('active'));
+    document.getElementById('lang-' + lang).classList.add('active');
+    btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
 </body>
 </html>
