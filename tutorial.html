@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>DriveHUD — 使用教學</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #00ff41; --blue: #0a84ff; --red: #ff453a;
+      --bg: #000; --s1: #111; --s2: #1c1c1e; --s3: #2c2c2e;
+      --text: #f5f5f7; --muted: #86868b; --border: #2c2c2e;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+    /* ── WEB-ONLY ELEMENTS (hidden in app mode) ── */
+    .web-only { display: flex; }
+    body.app-mode .web-only { display: none !important; }
+    body.app-mode { padding-top: 0; }
+
+    /* ── NAV ── */
+    nav.web-only {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(0,0,0,.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      height: 52px; padding: 0 24px;
+      align-items: center; justify-content: space-between;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); }
+    .nav-logo svg { width: 22px; height: 22px; fill: var(--blue); }
+    .nav-logo span { font-size: 16px; font-weight: 700; }
+    .nav-home { color: var(--muted); text-decoration: none; font-size: 13px; }
+    .nav-home:hover { color: var(--text); }
+
+    /* ── LANG BAR ── */
+    .lang-bar.web-only {
+      background: #0a0a0a; border-bottom: 1px solid var(--border);
+      padding: 8px 20px; gap: 6px; flex-wrap: wrap;
+    }
+    body:not(.app-mode) { padding-top: 52px; }
+    .lang-bar button {
+      background: transparent; border: 1px solid #3a3a3a; color: var(--muted);
+      padding: 4px 13px; border-radius: 20px; cursor: pointer; font-size: 13px;
+      transition: all .15s; font-family: inherit;
+    }
+    .lang-bar button.active, .lang-bar button:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    /* ── APP HEADER (shown in app mode only) ── */
+    .app-header { display: none; padding: 20px 20px 4px; }
+    body.app-mode .app-header { display: block; }
+    .app-header h1 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+    .app-header p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    /* ── LANG SECTIONS ── */
+    .lang-section { display: none; }
+    .lang-section.active { display: block; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { padding: 40px 20px 32px; text-align: center; }
+    body.app-mode .page-header { display: none; }
+    .page-header h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 800; letter-spacing: -.03em; margin-bottom: 8px; }
+    .page-header p { font-size: 15px; color: var(--muted); }
+
+    /* ── ACCORDION ── */
+    .accordion { max-width: 720px; margin: 0 auto; padding: 0 16px 60px; }
+    body.app-mode .accordion { padding-top: 8px; }
+
+    .topic {
+      border: 1px solid var(--border); border-radius: 16px;
+      margin-bottom: 10px; overflow: hidden;
+      transition: border-color .2s;
+    }
+    .topic.open { border-color: rgba(10,132,255,.35); }
+
+    .topic-header {
+      width: 100%; background: var(--s1); border: none; color: var(--text);
+      padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+      cursor: pointer; text-align: left; transition: background .15s; font-family: inherit;
+    }
+    .topic-header:hover { background: var(--s2); }
+    .topic.open .topic-header { background: var(--s2); border-bottom: 1px solid var(--border); }
+
+    .topic-num {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(10,132,255,.15); color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+    }
+    .topic.open .topic-num { background: var(--blue); color: #fff; }
+
+    .topic-title { font-size: 16px; font-weight: 600; flex: 1; }
+    .topic-arrow {
+      font-size: 12px; color: var(--muted);
+      transition: transform .25s; flex-shrink: 0;
+    }
+    .topic.open .topic-arrow { transform: rotate(180deg); }
+
+    .topic-body { display: none; padding: 24px 20px; background: var(--s1); }
+    .topic.open .topic-body { display: block; }
+
+    /* ── STEPS ── */
+    .steps { display: flex; flex-direction: column; gap: 20px; }
+    .step { display: flex; gap: 14px; }
+    .step-dot {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: var(--blue); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; margin-top: 2px;
+    }
+    .step-content { flex: 1; }
+    .step-content h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .step-content p { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+    /* ── MOCK UI ── */
+    .mock-ui {
+      background: #000; border: 1px solid #2a2a2a; border-radius: 20px;
+      overflow: hidden; margin: 16px 0; max-width: 300px;
+    }
+    .mock-screen { padding: 20px 18px; }
+
+    /* Login mock */
+    .mock-icon { text-align: center; margin-bottom: 12px; }
+    .mock-icon svg { width: 48px; height: 48px; fill: var(--blue); }
+    .mock-appname { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+    .mock-subtitle { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+    .mock-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 16px; border-radius: 12px;
+      font-size: 15px; font-weight: 600; margin-bottom: 10px;
+    }
+    .mock-btn.apple { background: #fff; color: #000; }
+    .mock-btn.google { background: #2a2a2a; color: #fff; }
+    .mock-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* Home mock */
+    .mock-section { margin-bottom: 16px; }
+    .mock-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; font-weight: 600; }
+    .mock-field {
+      background: var(--s2); border-radius: 10px; padding: 11px 14px;
+      font-size: 14px; color: var(--muted); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .mock-field.filled { color: var(--text); }
+    .mock-search-icon { color: var(--blue); font-size: 16px; }
+    .mock-result {
+      background: var(--s2); border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; margin-top: 6px; display: flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border);
+    }
+    .mock-result.selected { border-color: var(--blue); }
+    .mock-result-text { flex: 1; }
+    .mock-result-name { font-weight: 600; font-size: 13px; }
+    .mock-result-addr { color: var(--muted); font-size: 11px; }
+    .mock-result-dist { font-size: 11px; color: var(--muted); }
+    .mock-check { color: var(--blue); font-size: 16px; }
+    .mock-start-btn {
+      background: var(--blue); color: #fff; border-radius: 12px;
+      padding: 13px 16px; text-align: center; font-size: 15px; font-weight: 700;
+      margin-top: 10px;
+    }
+
+    /* Segmented picker mock */
+    .mock-seg {
+      display: flex; background: var(--s3); border-radius: 9px; padding: 2px; margin-bottom: 8px;
+    }
+    .mock-seg span {
+      flex: 1; text-align: center; padding: 6px 4px; font-size: 13px; border-radius: 7px; color: var(--muted);
+    }
+    .mock-seg span.sel { background: var(--s2); color: var(--text); font-weight: 600; }
+
+    /* Settings mock */
+    .mock-setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; background: var(--s2); border-radius: 10px;
+      margin-bottom: 6px; font-size: 14px;
+    }
+    .mock-setting-row.danger { color: var(--red); }
+    .mock-setting-row.muted { color: var(--muted); }
+    .mock-chevron { color: var(--muted); font-size: 12px; }
+
+    /* Points mock */
+    .mock-points-row {
+      display: flex; align-items: center; padding: 11px 14px;
+      background: var(--s2); border-radius: 10px; margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .mock-points-val { margin-left: auto; font-weight: 700; font-size: 16px; }
+    .mock-points-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px; background: var(--s2); border-radius: 10px;
+      margin-bottom: 6px; font-size: 13px;
+    }
+    .mock-badge {
+      background: rgba(10,132,255,.15); color: var(--blue);
+      padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    }
+
+    /* ── SCREENSHOT PAIR ── */
+    .shot-pair { display: flex; gap: 12px; margin: 16px 0; align-items: flex-start; flex-wrap: wrap; }
+    .shot-item { flex: 1; min-width: 130px; max-width: 200px; }
+    .shot-item img { width: 100%; border-radius: 20px; border: 1px solid #2a2a2a; display: block; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+    .shot-cap { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+    /* ── TIP BOX ── */
+    .tip {
+      background: rgba(10,132,255,.1); border: 1px solid rgba(10,132,255,.25);
+      border-radius: 12px; padding: 12px 16px; margin-top: 16px;
+      font-size: 13px; color: #6fb3ff; line-height: 1.5;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .tip-icon { flex-shrink: 0; font-size: 16px; }
+
+    /* ── FOOTER ── */
+    footer.web-only {
+      border-top: 1px solid var(--border); padding: 28px 24px;
+      justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px;
+    }
+    footer p { font-size: 12px; color: var(--muted); }
+    .footer-links { display: flex; gap: 16px; }
+    .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+
+    @media (max-width: 480px) {
+      .shot-item { min-width: 110px; }
+      .mock-ui { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV (web only) -->
+<nav class="web-only">
+  <a href="/" class="nav-logo">
+    <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+    <span>DriveHUD</span>
+  </a>
+  <a href="/" class="nav-home">← 首頁</a>
+</nav>
+
+<!-- LANG BAR (web only) -->
+<div class="lang-bar web-only">
+  <button class="active" onclick="setLang('zh',this)">繁體中文</button>
+  <button onclick="setLang('en',this)">English</button>
+  <button onclick="setLang('ja',this)">日本語</button>
+  <button onclick="setLang('ko',this)">한국어</button>
+  <button onclick="setLang('th',this)">ภาษาไทย</button>
+</div>
+
+<!-- APP HEADER (app mode only) -->
+<div class="app-header">
+  <h1 id="app-title">使用教學</h1>
+  <p id="app-sub">DriveHUD 操作說明</p>
+</div>
+
+<!-- ═══ 繁體中文 ═══ -->
+<div class="lang-section active" id="lang-zh">
+  <div class="page-header">
+    <h1>使用教學</h1>
+    <p>DriveHUD 完整操作說明</p>
+  </div>
+  <div class="accordion">
+
+    <!-- 1. 登入 -->
+    <div class="topic" id="zh-1">
+      <button class="topic-header" onclick="toggle('zh-1')">
+        <div class="topic-num">1</div>
+        <span class="topic-title">如何登入</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>開啟 DriveHUD</h3>
+              <p>首次開啟 App 後，會顯示登入畫面。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>選擇登入方式</h3>
+              <p>點擊「<strong>Sign in with Apple</strong>」或「<strong>Sign in with Google</strong>」，依照系統提示完成驗證。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-icon"><svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg></div>
+                  <div class="mock-appname">DriveHUD</div>
+                  <div class="mock-subtitle">Navigation HUD display</div>
+                  <div class="mock-btn apple"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Sign in with Apple</div>
+                  <div class="mock-btn google"><span style="font-size:16px;font-weight:700;color:#4285F4">G</span> Sign in with Google</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>登入完成</h3>
+              <p>登入成功後，App 會自動讀取您的帳號資料並進入主畫面。</p>
+            </div>
+          </div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>不登入也可以免費使用 Apple Maps 導航功能。登入後才能使用點數、簽到、Google 導航等功能。</div>
+      </div>
+    </div>
+
+    <!-- 2. 登出 -->
+    <div class="topic" id="zh-2">
+      <button class="topic-header" onclick="toggle('zh-2')">
+        <div class="topic-num">2</div>
+        <span class="topic-title">如何登出</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>點擊右上角的齒輪圖示</h3>
+              <p>在主畫面或導航畫面的右上角，點擊「⚙️」開啟設定頁面。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>進入「帳號」區塊</h3>
+              <p>往下捲動找到「帳號」區塊，點擊「<strong>登出</strong>」。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-label">帳號</div>
+                  <div class="mock-setting-row muted" style="margin-bottom:6px;">
+                    <span>已登入</span><span style="font-size:12px;">user@example.com</span>
+                  </div>
+                  <div class="mock-setting-row" style="background:rgba(10,132,255,.1);color:var(--blue);">
+                    <span>登出</span><span class="mock-chevron">›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>確認登出</h3>
+              <p>確認後即完成登出，回到登入畫面。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 刪除帳號 -->
+    <div class="topic" id="zh-3">
+      <button class="topic-header" onclick="toggle('zh-3')">
+        <div class="topic-num">3</div>
+        <span class="topic-title">如何刪除帳號</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>開啟設定頁面</h3>
+              <p>點擊右上角齒輪圖示「⚙️」開啟設定。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>點擊「刪除帳號」</h3>
+              <p>在帳號區塊下方找到「<strong style="color:var(--red)">刪除帳號</strong>」，點擊後確認。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-label">帳號</div>
+                  <div class="mock-setting-row" style="background:rgba(10,132,255,.1);color:var(--blue);margin-bottom:6px;">
+                    <span>登出</span><span class="mock-chevron">›</span>
+                  </div>
+                  <div class="mock-setting-row danger">
+                    <span>刪除帳號</span><span class="mock-chevron" style="color:var(--red)">›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>帳號與資料一併刪除</h3>
+              <p>刪除後，您的帳號、點數紀錄及所有個人資料將從伺服器永久移除，此操作無法復原。</p>
+            </div>
+          </div>
+        </div>
+        <div class="tip" style="background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.25);color:#ff9f9b;"><span class="tip-icon">⚠️</span>刪除帳號後，所有點數與紀錄將永久消失，無法復原。</div>
+      </div>
+    </div>
+
+    <!-- 4. 點數累積 -->
+    <div class="topic" id="zh-4">
+      <button class="topic-header" onclick="toggle('zh-4')">
+        <div class="topic-num">4</div>
+        <span class="topic-title">會員點數如何累積</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">★</div>
+            <div class="step-content">
+              <h3>新帳號開通禮 +10 點</h3>
+              <p>首次登入時自動發放，讓你立即開始使用 Google 導航。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">★</div>
+            <div class="step-content">
+              <h3>每日簽到 +1 點</h3>
+              <p>每天可點擊一次「每日簽到」按鈕，每日只能簽到一次。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">★</div>
+            <div class="step-content">
+              <h3>觀看廣告 +1 點</h3>
+              <p>簽到後可額外觀看一次廣告將當日獎勵加倍，另外也可在設定頁面觀看廣告，每小時最多 4 次。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-points-row">
+                    <span>⭐ 剩餘點數</span>
+                    <span class="mock-points-val">8</span>
+                  </div>
+                  <div class="mock-points-btn">
+                    <span>📅 每日簽到</span><span class="mock-badge">+1 點</span>
+                  </div>
+                  <div class="mock-points-btn">
+                    <span>▶ 觀看廣告</span><span class="mock-badge">+1 點</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>點數消耗方式：打字搜尋目的地開始導航 -2 點；分享匯入目的地開始導航 -1 點。30 分鐘內重新導航免費。</div>
+      </div>
+    </div>
+
+    <!-- 5. 目的地搜尋 -->
+    <div class="topic" id="zh-5">
+      <button class="topic-header" onclick="toggle('zh-5')">
+        <div class="topic-num">5</div>
+        <span class="topic-title">如何搜尋目的地</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>在搜尋框輸入地點</h3>
+              <p>點擊「目的地」搜尋框，輸入地址或地點名稱（例如：台北 101）。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-label">目的地</div>
+                  <div class="mock-field filled">台北 101 <span class="mock-search-icon">🔍</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>點擊 🔍 或鍵盤搜尋鍵</h3>
+              <p>搜尋結果會顯示在下方，列出符合的地點及距離。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-result selected">
+                    <div class="mock-result-text">
+                      <div class="mock-result-name">台北 101</div>
+                      <div class="mock-result-addr">信義路五段7號</div>
+                    </div>
+                    <div><div class="mock-result-dist">5.2 km</div><div class="mock-check">✓</div></div>
+                  </div>
+                  <div class="mock-result">
+                    <div class="mock-result-text">
+                      <div class="mock-result-name">台北 101 購物中心</div>
+                      <div class="mock-result-addr">信義區</div>
+                    </div>
+                    <div class="mock-result-dist">5.3 km</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>點選正確的地點</h3>
+              <p>從列表中點擊你要前往的地點，搜尋框會填入該地點名稱，並出現勾選標記。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 開始導航 -->
+    <div class="topic" id="zh-6">
+      <button class="topic-header" onclick="toggle('zh-6')">
+        <div class="topic-num">6</div>
+        <span class="topic-title">如何開始導航</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>選擇導航來源</h3>
+              <p>在主畫面選擇「Google Maps」或「Apple Maps」作為導航來源。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-seg">
+                    <span class="sel">Google Maps</span>
+                    <span>Apple Maps</span>
+                  </div>
+                  <div class="mock-seg">
+                    <span class="sel">一般模式</span>
+                    <span>HUD 模式</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>輸入並選取目的地</h3>
+              <p>依照上一步驟搜尋並選取目的地。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>點擊「開始導航」</h3>
+              <p>點擊藍色的「開始導航」按鈕，系統會計算路線並進入導航畫面。</p>
+              <div class="mock-ui">
+                <div class="mock-screen">
+                  <div class="mock-start-btn">開始導航</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">4</div>
+            <div class="step-content">
+              <h3>（選擇性）切換 HUD 模式</h3>
+              <p>進入導航後，可從設定切換成「HUD 模式」，將手機放置於儀表板，對準擋風玻璃即可反射顯示。</p>
+            </div>
+          </div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>使用 Google Maps 導航需要點數（搜尋目的地 -2 點）。Apple Maps 導航免費，無需點數。</div>
+      </div>
+    </div>
+
+    <!-- 7. Google Maps 分享 -->
+    <div class="topic" id="zh-7">
+      <button class="topic-header" onclick="toggle('zh-7')">
+        <div class="topic-num">7</div>
+        <span class="topic-title">透過 Google Maps 分享導航</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>在 Google Maps 找到目的地</h3>
+              <p>在 Google Maps 搜尋或點選目的地，點擊地點資訊卡右上角的<strong>分享按鈕（↑）</strong>。</p>
+              <div class="shot-pair">
+                <div class="shot-item">
+                  <img src="assets/share-google-1.png" alt="Google Maps 分享按鈕">
+                  <div class="shot-cap">點擊 ↑ 分享按鈕</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>從分享清單選擇 DriveHUD</h3>
+              <p>iOS 分享清單中找到 <strong>DriveHUD</strong>（綠色箭頭圖示），點擊後會自動跳回 DriveHUD 並填入目的地。</p>
+              <div class="shot-pair">
+                <div class="shot-item">
+                  <img src="assets/share-google-2.png" alt="選擇 DriveHUD">
+                  <div class="shot-cap">點擊 DriveHUD</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>點擊「開始導航」</h3>
+              <p>目的地已自動填入，直接點擊「開始導航」即可出發。分享匯入的目的地只需 -1 點。</p>
+            </div>
+          </div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>如果分享清單中看不到 DriveHUD，請向右滑動找到「更多」，或先開啟過 DriveHUD 讓系統記錄。</div>
+      </div>
+    </div>
+
+    <!-- 8. Apple Maps 分享 -->
+    <div class="topic" id="zh-8">
+      <button class="topic-header" onclick="toggle('zh-8')">
+        <div class="topic-num">8</div>
+        <span class="topic-title">透過 Apple Maps 分享導航</span>
+        <span class="topic-arrow">▼</span>
+      </button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-dot">1</div>
+            <div class="step-content">
+              <h3>在 Apple Maps 找到目的地</h3>
+              <p>在 Apple Maps 搜尋或點選目的地，點擊地點資訊卡左側的<strong>分享按鈕（↑）</strong>。</p>
+              <div class="shot-pair">
+                <div class="shot-item">
+                  <img src="assets/share-apple-1.png" alt="Apple Maps 分享按鈕">
+                  <div class="shot-cap">點擊 ↑ 分享按鈕</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">2</div>
+            <div class="step-content">
+              <h3>從分享清單選擇 DriveHUD</h3>
+              <p>iOS 分享清單中找到 <strong>DriveHUD</strong>（綠色箭頭圖示），點擊後自動跳回 DriveHUD 並填入目的地。</p>
+              <div class="shot-pair">
+                <div class="shot-item">
+                  <img src="assets/share-apple-2.png" alt="選擇 DriveHUD">
+                  <div class="shot-cap">點擊 DriveHUD</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-dot">3</div>
+            <div class="step-content">
+              <h3>點擊「開始導航」</h3>
+              <p>目的地已自動填入，點擊「開始導航」出發。Apple Maps 來源導航完全免費。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /accordion -->
+</div><!-- /lang-zh -->
+
+<!-- ═══ English ═══ -->
+<div class="lang-section" id="lang-en">
+  <div class="page-header"><h1>User Guide</h1><p>DriveHUD Complete Tutorial</p></div>
+  <div class="accordion">
+
+    <div class="topic" id="en-1">
+      <button class="topic-header" onclick="toggle('en-1')"><div class="topic-num">1</div><span class="topic-title">How to Sign In</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Open DriveHUD</h3><p>The sign-in screen appears the first time you open the app.</p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Choose a sign-in method</h3><p>Tap <strong>Sign in with Apple</strong> or <strong>Sign in with Google</strong> and follow the system prompts.<div class="mock-ui"><div class="mock-screen"><div class="mock-icon"><svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg></div><div class="mock-appname">DriveHUD</div><div class="mock-subtitle">Navigation HUD display</div><div class="mock-btn apple"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg> Sign in with Apple</div><div class="mock-btn google"><span style="font-size:16px;font-weight:700;color:#4285F4">G</span> Sign in with Google</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Sign-in complete</h3><p>After signing in, the app loads your account data and takes you to the home screen.</p></div></div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>You can use Apple Maps navigation for free without signing in. An account is required for points, check-ins, and Google navigation.</div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-2">
+      <button class="topic-header" onclick="toggle('en-2')"><div class="topic-num">2</div><span class="topic-title">How to Sign Out</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Tap the gear icon ⚙️</h3><p>Find the gear icon in the top-right corner of the home or navigation screen.</p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Tap "Sign Out"</h3><p>Scroll to the Account section and tap <strong>Sign Out</strong>.<div class="mock-ui"><div class="mock-screen"><div class="mock-label">Account</div><div class="mock-setting-row muted" style="margin-bottom:6px;"><span>Signed in</span><span style="font-size:12px;">user@example.com</span></div><div class="mock-setting-row" style="background:rgba(10,132,255,.1);color:var(--blue);"><span>Sign Out</span><span class="mock-chevron">›</span></div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Confirm sign-out</h3><p>Confirm to complete sign-out and return to the login screen.</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-3">
+      <button class="topic-header" onclick="toggle('en-3')"><div class="topic-num">3</div><span class="topic-title">How to Delete Your Account</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Open Settings ⚙️</h3><p>Tap the gear icon in the top-right corner.</p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Tap "Delete Account"</h3><p>Find <strong style="color:var(--red)">Delete Account</strong> in the Account section and confirm.<div class="mock-ui"><div class="mock-screen"><div class="mock-label">Account</div><div class="mock-setting-row" style="background:rgba(10,132,255,.1);color:var(--blue);margin-bottom:6px;"><span>Sign Out</span><span class="mock-chevron">›</span></div><div class="mock-setting-row danger"><span>Delete Account</span><span class="mock-chevron" style="color:var(--red)">›</span></div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Account permanently deleted</h3><p>Your account, points, and all personal data are permanently removed from the server. This cannot be undone.</p></div></div>
+        </div>
+        <div class="tip" style="background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.25);color:#ff9f9b;"><span class="tip-icon">⚠️</span>Deleting your account is permanent. All points and history will be lost and cannot be recovered.</div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-4">
+      <button class="topic-header" onclick="toggle('en-4')"><div class="topic-num">4</div><span class="topic-title">How to Earn Points</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">★</div><div class="step-content"><h3>Sign-up bonus: +10 points</h3><p>Awarded automatically on first sign-in so you can start using Google navigation right away.</p></div></div>
+          <div class="step"><div class="step-dot">★</div><div class="step-content"><h3>Daily check-in: +1 point</h3><p>Tap the "Daily Check-in" button once per day.</p></div></div>
+          <div class="step"><div class="step-dot">★</div><div class="step-content"><h3>Watch ads: +1 point each</h3><p>After checking in you can watch an ad to double the day's reward. You can also watch voluntary ads in Settings (max 4/hour).<div class="mock-ui"><div class="mock-screen"><div class="mock-points-row"><span>⭐ Remaining points</span><span class="mock-points-val">8</span></div><div class="mock-points-btn"><span>📅 Daily check-in</span><span class="mock-badge">+1 pt</span></div><div class="mock-points-btn"><span>▶ Watch ad</span><span class="mock-badge">+1 pt</span></div></div></div></p></div></div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>Points usage: typed-search navigation costs -2 pts; shared destination navigation costs -1 pt. Re-navigation within 30 min is free.</div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-5">
+      <button class="topic-header" onclick="toggle('en-5')"><div class="topic-num">5</div><span class="topic-title">How to Search for a Destination</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Type in the search box</h3><p>Tap the Destination field and type an address or place name (e.g. Taipei 101).<div class="mock-ui"><div class="mock-screen"><div class="mock-label">Destination</div><div class="mock-field filled">Taipei 101 <span class="mock-search-icon">🔍</span></div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Tap 🔍 or the keyboard Search key</h3><p>Results appear below, sorted by distance.</p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Select the correct place</h3><p>Tap the place from the list. The search box fills in and a checkmark appears.</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-6">
+      <button class="topic-header" onclick="toggle('en-6')"><div class="topic-num">6</div><span class="topic-title">How to Start Navigation</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Choose a navigation source</h3><p>Select <strong>Google Maps</strong> or <strong>Apple Maps</strong> using the segmented picker.</p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Search and select a destination</h3><p>Follow the steps above to search and pick a place.</p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Tap "Start navigation"</h3><p>The route is calculated and navigation begins.<div class="mock-ui"><div class="mock-screen"><div class="mock-start-btn">Start navigation</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">4</div><div class="step-content"><h3>(Optional) Switch to HUD mode</h3><p>During navigation, switch to HUD mode in Settings, then place your phone on the dashboard facing the windshield.</p></div></div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>Google Maps navigation requires points (-2 pts for a typed search). Apple Maps navigation is always free.</div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-7">
+      <button class="topic-header" onclick="toggle('en-7')"><div class="topic-num">7</div><span class="topic-title">Share from Google Maps</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Find a place in Google Maps</h3><p>Search or tap a place, then tap the <strong>Share button (↑)</strong> in the top-right of the place card.<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-1.png" alt="Google Maps share button"><div class="shot-cap">Tap ↑ share button</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Select DriveHUD from the share sheet</h3><p>Find <strong>DriveHUD</strong> (green arrow icon) in the iOS share sheet. Tapping it automatically returns you to DriveHUD with the destination filled in.<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-2.png" alt="Select DriveHUD"><div class="shot-cap">Tap DriveHUD</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Tap "Start navigation"</h3><p>The destination is already filled in. Tap Start. Shared destinations cost only -1 point.</p></div></div>
+        </div>
+        <div class="tip"><span class="tip-icon">💡</span>If you don't see DriveHUD in the share sheet, swipe right to find "More", or open DriveHUD first so iOS remembers it.</div>
+      </div>
+    </div>
+
+    <div class="topic" id="en-8">
+      <button class="topic-header" onclick="toggle('en-8')"><div class="topic-num">8</div><span class="topic-title">Share from Apple Maps</span><span class="topic-arrow">▼</span></button>
+      <div class="topic-body">
+        <div class="steps">
+          <div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Find a place in Apple Maps</h3><p>Search or tap a place, then tap the <strong>Share button (↑)</strong> on the left side of the place card.<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-1.png" alt="Apple Maps share button"><div class="shot-cap">Tap ↑ share button</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">2</div><div class="step-content"><h3>Select DriveHUD from the share sheet</h3><p>Find <strong>DriveHUD</strong> in the iOS share sheet and tap it. DriveHUD opens automatically with the destination set.<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-2.png" alt="Select DriveHUD"><div class="shot-cap">Tap DriveHUD</div></div></div></p></div></div>
+          <div class="step"><div class="step-dot">3</div><div class="step-content"><h3>Tap "Start navigation"</h3><p>Apple Maps navigation is completely free — no points required.</p></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ 日本語 ═══ -->
+<div class="lang-section" id="lang-ja">
+  <div class="page-header"><h1>使い方ガイド</h1><p>DriveHUD 操作説明</p></div>
+  <div class="accordion">
+    <div class="topic" id="ja-1"><button class="topic-header" onclick="toggle('ja-1')"><div class="topic-num">1</div><span class="topic-title">サインインの方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>DriveHUD を開く</h3><p>初回起動時にサインイン画面が表示されます。</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>サインイン方法を選択</h3><p><strong>Apple でサインイン</strong>または<strong>Google でサインイン</strong>をタップし、指示に従って認証を完了します。</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>サインイン完了</h3><p>サインイン成功後、アカウントデータが読み込まれ、ホーム画面に移動します。</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>サインインなしでも Apple マップナビを無料で使用できます。ポイント・チェックイン・Google ナビはアカウントが必要です。</div></div></div>
+    <div class="topic" id="ja-2"><button class="topic-header" onclick="toggle('ja-2')"><div class="topic-num">2</div><span class="topic-title">サインアウトの方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>歯車アイコン ⚙️ をタップ</h3><p>ホーム画面または ナビ画面の右上にある歯車アイコンをタップします。</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>「サインアウト」をタップ</h3><p>「アカウント」セクションで<strong>サインアウト</strong>をタップします。</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>確認してサインアウト完了</h3><p>確認後、サインアウトが完了しログイン画面に戻ります。</p></div></div></div></div></div>
+    <div class="topic" id="ja-3"><button class="topic-header" onclick="toggle('ja-3')"><div class="topic-num">3</div><span class="topic-title">アカウント削除の方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>設定を開く ⚙️</h3><p>右上の歯車アイコンをタップします。</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>「アカウントを削除」をタップ</h3><p>アカウントセクションの<strong style="color:var(--red)">アカウントを削除</strong>をタップして確認します。</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>データが完全に削除</h3><p>アカウント・ポイント・すべての個人データがサーバーから完全に削除されます。この操作は元に戻せません。</p></div></div></div><div class="tip" style="background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.25);color:#ff9f9b;"><span class="tip-icon">⚠️</span>アカウントの削除は永久です。すべてのポイントと履歴が失われ、復元できません。</div></div></div>
+    <div class="topic" id="ja-4"><button class="topic-header" onclick="toggle('ja-4')"><div class="topic-num">4</div><span class="topic-title">ポイントの獲得方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>新規登録ボーナス +10 ポイント</h3><p>初回サインイン時に自動付与されます。</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>デイリーチェックイン +1 ポイント</h3><p>毎日1回「デイリーチェックイン」ボタンをタップできます。</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>広告視聴 +1 ポイント</h3><p>チェックイン後に広告を視聴してその日の報酬を2倍にできます。設定画面でも広告を視聴可能（1時間最大4回）。</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>ポイント消費：テキスト検索でのナビ開始 -2pt；シェアインポートでのナビ開始 -1pt。30分以内の再ナビは無料。</div></div></div>
+    <div class="topic" id="ja-5"><button class="topic-header" onclick="toggle('ja-5')"><div class="topic-num">5</div><span class="topic-title">目的地の検索方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>検索ボックスに入力</h3><p>「目的地」フィールドをタップして住所や場所名を入力します（例：東京タワー）。</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>🔍 または検索キーをタップ</h3><p>距離順で検索結果が表示されます。</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>場所を選択</h3><p>リストから目的地をタップすると検索ボックスに名前が入力されチェックマークが表示されます。</p></div></div></div></div></div>
+    <div class="topic" id="ja-6"><button class="topic-header" onclick="toggle('ja-6')"><div class="topic-num">6</div><span class="topic-title">ナビゲーションの開始方法</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>ナビソースを選択</h3><p>セグメントピッカーで<strong>Google マップ</strong>または<strong>Apple マップ</strong>を選択します。</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>目的地を検索して選択</h3><p>上記の手順に従って目的地を検索・選択します。</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「ナビ開始」をタップ</h3><p>ルートが計算されナビ画面に移行します。</p></div></div><div class="step"><div class="step-dot">4</div><div class="step-content"><h3>（任意）HUDモードに切替</h3><p>ナビ中に設定からHUDモードに切り替え、スマホをダッシュボードに設置してフロントガラスに反射表示。</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>Google マップナビにはポイントが必要（検索目的地 -2pt）。Apple マップナビは常に無料。</div></div></div>
+    <div class="topic" id="ja-7"><button class="topic-header" onclick="toggle('ja-7')"><div class="topic-num">7</div><span class="topic-title">Google マップからシェアしてナビ</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Google マップで目的地を開く</h3><p>場所情報カード右上の<strong>シェアボタン（↑）</strong>をタップします。<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-1.png" alt="Google Maps シェア"><div class="shot-cap">↑ シェアボタンをタップ</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>シェアシートから DriveHUD を選択</h3><p>シェアシートの <strong>DriveHUD</strong>（緑の矢印アイコン）をタップすると自動で DriveHUD に戻り目的地がセットされます。<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-2.png" alt="DriveHUD を選択"><div class="shot-cap">DriveHUD をタップ</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「ナビ開始」をタップ</h3><p>目的地は自動入力済み。シェア目的地のナビは -1pt のみ。</p></div></div></div></div></div>
+    <div class="topic" id="ja-8"><button class="topic-header" onclick="toggle('ja-8')"><div class="topic-num">8</div><span class="topic-title">Apple マップからシェアしてナビ</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Apple マップで目的地を開く</h3><p>場所情報カード左側の<strong>シェアボタン（↑）</strong>をタップします。<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-1.png" alt="Apple Maps シェア"><div class="shot-cap">↑ シェアボタンをタップ</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>DriveHUD を選択</h3><p>シェアシートの DriveHUD をタップすると自動で DriveHUD に戻り目的地がセットされます。<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-2.png" alt="DriveHUD を選択"><div class="shot-cap">DriveHUD をタップ</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「ナビ開始」をタップ</h3><p>Apple マップナビはポイント不要で完全無料。</p></div></div></div></div></div>
+  </div>
+</div>
+
+<!-- ═══ 한국어 ═══ -->
+<div class="lang-section" id="lang-ko">
+  <div class="page-header"><h1>사용 가이드</h1><p>DriveHUD 완전 사용 설명서</p></div>
+  <div class="accordion">
+    <div class="topic" id="ko-1"><button class="topic-header" onclick="toggle('ko-1')"><div class="topic-num">1</div><span class="topic-title">로그인 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>DriveHUD 열기</h3><p>앱을 처음 실행하면 로그인 화면이 나타납니다.</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>로그인 방법 선택</h3><p><strong>Apple로 로그인</strong> 또는 <strong>Google로 로그인</strong>을 탭하고 안내에 따라 인증을 완료합니다.</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>로그인 완료</h3><p>로그인 성공 후 계정 데이터가 로드되고 홈 화면으로 이동합니다.</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>로그인 없이도 Apple 지도 내비게이션을 무료로 사용할 수 있습니다. 포인트·체크인·Google 내비는 계정이 필요합니다.</div></div></div>
+    <div class="topic" id="ko-2"><button class="topic-header" onclick="toggle('ko-2')"><div class="topic-num">2</div><span class="topic-title">로그아웃 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>⚙️ 아이콘 탭</h3><p>홈 또는 내비게이션 화면 우측 상단의 톱니바퀴 아이콘을 탭합니다.</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>「로그아웃」탭</h3><p>계정 섹션에서 <strong>로그아웃</strong>을 탭합니다.</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>확인 후 로그아웃 완료</h3><p>확인하면 로그아웃이 완료되고 로그인 화면으로 돌아갑니다.</p></div></div></div></div></div>
+    <div class="topic" id="ko-3"><button class="topic-header" onclick="toggle('ko-3')"><div class="topic-num">3</div><span class="topic-title">계정 삭제 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>설정 열기 ⚙️</h3><p>우측 상단의 톱니바퀴 아이콘을 탭합니다.</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>「계정 삭제」탭</h3><p>계정 섹션에서 <strong style="color:var(--red)">계정 삭제</strong>를 탭하고 확인합니다.</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>계정 및 데이터 영구 삭제</h3><p>계정, 포인트, 모든 개인 데이터가 서버에서 영구적으로 삭제됩니다. 되돌릴 수 없습니다.</p></div></div></div><div class="tip" style="background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.25);color:#ff9f9b;"><span class="tip-icon">⚠️</span>계정 삭제는 영구적입니다. 모든 포인트와 기록이 삭제되며 복구할 수 없습니다.</div></div></div>
+    <div class="topic" id="ko-4"><button class="topic-header" onclick="toggle('ko-4')"><div class="topic-num">4</div><span class="topic-title">포인트 적립 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>가입 보너스 +10 포인트</h3><p>첫 로그인 시 자동으로 지급됩니다.</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>일일 체크인 +1 포인트</h3><p>매일 「일일 체크인」 버튼을 한 번 탭할 수 있습니다.</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>광고 시청 +1 포인트</h3><p>체크인 후 광고를 시청해 당일 보상을 2배로 만들 수 있습니다. 설정에서도 광고 시청 가능 (시간당 최대 4회).</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>포인트 소비: 검색 목적지 내비 시작 -2pt; 공유 목적지 내비 시작 -1pt. 30분 이내 재내비는 무료.</div></div></div>
+    <div class="topic" id="ko-5"><button class="topic-header" onclick="toggle('ko-5')"><div class="topic-num">5</div><span class="topic-title">목적지 검색 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>검색창에 입력</h3><p>목적지 필드를 탭하고 주소나 장소명을 입력합니다 (예: 롯데타워).</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>🔍 또는 키보드 검색 키 탭</h3><p>거리순으로 검색 결과가 표시됩니다.</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>장소 선택</h3><p>목록에서 목적지를 탭하면 검색창에 이름이 채워지고 체크 표시가 나타납니다.</p></div></div></div></div></div>
+    <div class="topic" id="ko-6"><button class="topic-header" onclick="toggle('ko-6')"><div class="topic-num">6</div><span class="topic-title">내비게이션 시작 방법</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>내비게이션 소스 선택</h3><p>세그먼트 피커에서 <strong>Google 지도</strong> 또는 <strong>Apple 지도</strong>를 선택합니다.</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>목적지 검색 및 선택</h3><p>위 단계에 따라 목적지를 검색하고 선택합니다.</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「내비게이션 시작」탭</h3><p>경로가 계산되고 내비게이션 화면으로 전환됩니다.</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>Google 지도 내비에는 포인트가 필요합니다 (-2pt). Apple 지도 내비는 항상 무료.</div></div></div>
+    <div class="topic" id="ko-7"><button class="topic-header" onclick="toggle('ko-7')"><div class="topic-num">7</div><span class="topic-title">Google 지도에서 공유하여 내비</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Google 지도에서 목적지 찾기</h3><p>장소 정보 카드 우측 상단의 <strong>공유 버튼(↑)</strong>을 탭합니다.<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-1.png" alt="구글 지도 공유"><div class="shot-cap">↑ 공유 버튼 탭</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>공유 시트에서 DriveHUD 선택</h3><p>공유 시트에서 <strong>DriveHUD</strong>(초록 화살표 아이콘)를 탭하면 자동으로 DriveHUD로 돌아가 목적지가 설정됩니다.<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-2.png" alt="DriveHUD 선택"><div class="shot-cap">DriveHUD 탭</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「내비게이션 시작」탭</h3><p>목적지가 자동 입력되어 있습니다. 공유 목적지 내비는 -1pt만 소비.</p></div></div></div></div></div>
+    <div class="topic" id="ko-8"><button class="topic-header" onclick="toggle('ko-8')"><div class="topic-num">8</div><span class="topic-title">Apple 지도에서 공유하여 내비</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>Apple 지도에서 목적지 찾기</h3><p>장소 정보 카드 좌측의 <strong>공유 버튼(↑)</strong>을 탭합니다.<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-1.png" alt="애플 지도 공유"><div class="shot-cap">↑ 공유 버튼 탭</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>DriveHUD 선택</h3><p>공유 시트에서 DriveHUD를 탭하면 자동으로 DriveHUD가 실행되고 목적지가 설정됩니다.<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-2.png" alt="DriveHUD 선택"><div class="shot-cap">DriveHUD 탭</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>「내비게이션 시작」탭</h3><p>Apple 지도 내비게이션은 포인트 없이 완전 무료.</p></div></div></div></div></div>
+  </div>
+</div>
+
+<!-- ═══ ภาษาไทย ═══ -->
+<div class="lang-section" id="lang-th">
+  <div class="page-header"><h1>คู่มือการใช้งาน</h1><p>คำแนะนำการใช้ DriveHUD</p></div>
+  <div class="accordion">
+    <div class="topic" id="th-1"><button class="topic-header" onclick="toggle('th-1')"><div class="topic-num">1</div><span class="topic-title">วิธีเข้าสู่ระบบ</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>เปิด DriveHUD</h3><p>ครั้งแรกที่เปิดแอป หน้าจอเข้าสู่ระบบจะปรากฏขึ้น</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>เลือกวิธีเข้าสู่ระบบ</h3><p>แตะ <strong>Sign in with Apple</strong> หรือ <strong>Sign in with Google</strong> แล้วทำตามคำแนะนำ</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>เข้าสู่ระบบสำเร็จ</h3><p>หลังจากเข้าสู่ระบบ แอปจะโหลดข้อมูลบัญชีและไปยังหน้าหลัก</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>สามารถใช้ Apple Maps นำทางฟรีโดยไม่ต้องเข้าสู่ระบบ บัญชีจำเป็นสำหรับคะแนน เช็กอิน และ Google นำทาง</div></div></div>
+    <div class="topic" id="th-2"><button class="topic-header" onclick="toggle('th-2')"><div class="topic-num">2</div><span class="topic-title">วิธีออกจากระบบ</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>แตะไอคอนเฟือง ⚙️</h3><p>แตะไอคอนเฟืองที่มุมขวาบนของหน้าหลักหรือหน้าจอนำทาง</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>แตะ「ออกจากระบบ」</h3><p>เลื่อนหาส่วนบัญชีและแตะ <strong>ออกจากระบบ</strong></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>ยืนยันการออกจากระบบ</h3><p>ยืนยันเพื่อออกจากระบบและกลับไปยังหน้าเข้าสู่ระบบ</p></div></div></div></div></div>
+    <div class="topic" id="th-3"><button class="topic-header" onclick="toggle('th-3')"><div class="topic-num">3</div><span class="topic-title">วิธีลบบัญชี</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>เปิดการตั้งค่า ⚙️</h3><p>แตะไอคอนเฟืองที่มุมขวาบน</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>แตะ「ลบบัญชี」</h3><p>หา <strong style="color:var(--red)">ลบบัญชี</strong> ในส่วนบัญชีและยืนยัน</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>บัญชีและข้อมูลถูกลบถาวร</h3><p>บัญชี คะแนน และข้อมูลส่วนบุคคลทั้งหมดจะถูกลบออกจากเซิร์ฟเวอร์อย่างถาวร ไม่สามารถกู้คืนได้</p></div></div></div><div class="tip" style="background:rgba(255,69,58,.08);border-color:rgba(255,69,58,.25);color:#ff9f9b;"><span class="tip-icon">⚠️</span>การลบบัญชีเป็นการถาวร คะแนนและประวัติทั้งหมดจะหายไปและไม่สามารถกู้คืนได้</div></div></div>
+    <div class="topic" id="th-4"><button class="topic-header" onclick="toggle('th-4')"><div class="topic-num">4</div><span class="topic-title">วิธีสะสมคะแนน</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>โบนัสสมัครสมาชิก +10 คะแนน</h3><p>มอบให้อัตโนมัติเมื่อเข้าสู่ระบบครั้งแรก</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>เช็กอินรายวัน +1 คะแนน</h3><p>แตะปุ่ม「เช็กอินรายวัน」ได้วันละ 1 ครั้ง</p></div></div><div class="step"><div class="step-dot">★</div><div class="step-content"><h3>ดูโฆษณา +1 คะแนน</h3><p>หลังเช็กอินสามารถดูโฆษณาเพื่อรับรางวัลสองเท่า ดูเพิ่มในหน้าการตั้งค่าได้ (สูงสุด 4 ครั้ง/ชั่วโมง)</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>การใช้คะแนน: ค้นหาปลายทางแล้วเริ่มนำทาง -2pt; แชร์ปลายทางแล้วเริ่มนำทาง -1pt. การนำทางซ้ำภายใน 30 นาทีฟรี</div></div></div>
+    <div class="topic" id="th-5"><button class="topic-header" onclick="toggle('th-5')"><div class="topic-num">5</div><span class="topic-title">วิธีค้นหาปลายทาง</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>พิมพ์ในช่องค้นหา</h3><p>แตะช่อง「ปลายทาง」แล้วพิมพ์ที่อยู่หรือชื่อสถานที่ (เช่น เซ็นทรัลเวิลด์)</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>แตะ 🔍 หรือปุ่มค้นหา</h3><p>ผลลัพธ์จะแสดงตามระยะทาง</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>เลือกสถานที่</h3><p>แตะสถานที่จากรายการ ช่องค้นหาจะถูกกรอกและมีเครื่องหมายถูก</p></div></div></div></div></div>
+    <div class="topic" id="th-6"><button class="topic-header" onclick="toggle('th-6')"><div class="topic-num">6</div><span class="topic-title">วิธีเริ่มนำทาง</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>เลือกแหล่งนำทาง</h3><p>เลือก <strong>Google Maps</strong> หรือ <strong>Apple Maps</strong> จาก segmented picker</p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>ค้นหาและเลือกปลายทาง</h3><p>ทำตามขั้นตอนด้านบนเพื่อค้นหาและเลือกสถานที่</p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>แตะ「เริ่มนำทาง」</h3><p>ระบบจะคำนวณเส้นทางและเข้าสู่หน้าจอนำทาง</p></div></div></div><div class="tip"><span class="tip-icon">💡</span>Google Maps นำทางต้องใช้คะแนน (-2pt). Apple Maps นำทางฟรีเสมอ</div></div></div>
+    <div class="topic" id="th-7"><button class="topic-header" onclick="toggle('th-7')"><div class="topic-num">7</div><span class="topic-title">แชร์จาก Google Maps แล้วนำทาง</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>ค้นหาปลายทางใน Google Maps</h3><p>แตะ<strong>ปุ่มแชร์ (↑)</strong>ที่มุมขวาบนของการ์ดข้อมูลสถานที่<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-1.png" alt="Google Maps แชร์"><div class="shot-cap">แตะปุ่ม ↑ แชร์</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>เลือก DriveHUD จาก Share Sheet</h3><p>แตะ <strong>DriveHUD</strong> (ไอคอนลูกศรสีเขียว) ในชีตแชร์ของ iOS จะกลับไปยัง DriveHUD อัตโนมัติพร้อมปลายทางที่ตั้งไว้<div class="shot-pair"><div class="shot-item"><img src="assets/share-google-2.png" alt="เลือก DriveHUD"><div class="shot-cap">แตะ DriveHUD</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>แตะ「เริ่มนำทาง」</h3><p>ปลายทางถูกกรอกอัตโนมัติ การนำทางจากปลายทางที่แชร์ใช้เพียง -1pt</p></div></div></div></div></div>
+    <div class="topic" id="th-8"><button class="topic-header" onclick="toggle('th-8')"><div class="topic-num">8</div><span class="topic-title">แชร์จาก Apple Maps แล้วนำทาง</span><span class="topic-arrow">▼</span></button><div class="topic-body"><div class="steps"><div class="step"><div class="step-dot">1</div><div class="step-content"><h3>ค้นหาปลายทางใน Apple Maps</h3><p>แตะ<strong>ปุ่มแชร์ (↑)</strong>ทางด้านซ้ายของการ์ดข้อมูลสถานที่<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-1.png" alt="Apple Maps แชร์"><div class="shot-cap">แตะปุ่ม ↑ แชร์</div></div></div></p></div></div><div class="step"><div class="step-dot">2</div><div class="step-content"><h3>เลือก DriveHUD</h3><p>แตะ DriveHUD ในชีตแชร์ DriveHUD จะเปิดอัตโนมัติพร้อมปลายทาง<div class="shot-pair"><div class="shot-item"><img src="assets/share-apple-2.png" alt="เลือก DriveHUD"><div class="shot-cap">แตะ DriveHUD</div></div></div></p></div></div><div class="step"><div class="step-dot">3</div><div class="step-content"><h3>แตะ「เริ่มนำทาง」</h3><p>Apple Maps นำทางฟรีทั้งหมด ไม่ต้องใช้คะแนน</p></div></div></div></div></div>
+  </div>
+</div>
+
+<!-- FOOTER (web only) -->
+<footer class="web-only">
+  <p>© 2026 DriveHUD</p>
+  <div class="footer-links">
+    <a href="/">首頁</a>
+    <a href="privacy.html">隱私權政策</a>
+    <a href="mailto:harry2690@gmail.com">聯絡我們</a>
+  </div>
+</footer>
+
+<script>
+  // Detect app mode
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') === 'app') {
+    document.body.classList.add('app-mode');
+    // Set header text based on lang param
+    const lang = params.get('lang') || 'zh';
+    const titles = { zh:'使用教學', en:'User Guide', ja:'使い方ガイド', ko:'사용 가이드', th:'คู่มือการใช้งาน' };
+    const subs   = { zh:'DriveHUD 操作說明', en:'DriveHUD Complete Tutorial', ja:'DriveHUD 操作説明', ko:'DriveHUD 완전 사용 설명서', th:'คำแนะนำการใช้ DriveHUD' };
+    document.getElementById('app-title').textContent = titles[lang] || titles.zh;
+    document.getElementById('app-sub').textContent   = subs[lang]   || subs.zh;
+    setLang(lang, null);
+  }
+
+  function setLang(lang, btn) {
+    document.querySelectorAll('.lang-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.lang-bar button').forEach(el => el.classList.remove('active'));
+    const sec = document.getElementById('lang-' + lang);
+    if (sec) sec.classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (!btn) {
+      // activate correct lang-bar button
+      const langBar = document.querySelector('.lang-bar');
+      if (langBar) {
+        const buttons = langBar.querySelectorAll('button');
+        const map = { zh:0, en:1, ja:2, ko:3, th:4 };
+        if (buttons[map[lang]]) buttons[map[lang]].classList.add('active');
+      }
+    }
+    window.scrollTo({ top: 0 });
+  }
+
+  function toggle(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isOpen = el.classList.contains('open');
+    // Close all in same language section
+    const section = el.closest('.lang-section');
+    section.querySelectorAll('.topic.open').forEach(t => t.classList.remove('open'));
+    if (!isOpen) el.classList.add('open');
+  }
+</script>
+</body>
+</html>
